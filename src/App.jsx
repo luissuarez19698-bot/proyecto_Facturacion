@@ -6,6 +6,7 @@ import TablaFactura from "./components/TablaFactura";
 import TotalesFactura from "./components/TotalesFactura";
 import { calcularTotales } from "./components/calcularTotales";
 import { supabase } from "./database/supabaseconfig";
+// Nota: Ya no importamos generarPDF aquí porque se usará dentro de TotalesFactura o mediante una prop
 
 const MiniToast = Swal.mixin({
   toast: true,
@@ -29,18 +30,12 @@ function App() {
 
   const agregarProducto = (producto) => {
     setItemsFactura((prev) => [...prev, producto]);
-    MiniToast.fire({
-      icon: 'success',
-      title: 'Añadido'
-    });
+    MiniToast.fire({ icon: 'success', title: 'Añadido' });
   };
 
   const eliminarProducto = (index) => {
     setItemsFactura((prev) => prev.filter((_, i) => i !== index));
-    MiniToast.fire({
-      icon: 'info',
-      title: 'Eliminado'
-    });
+    MiniToast.fire({ icon: 'info', title: 'Eliminado' });
   };
 
   const totales = calcularTotales(itemsFactura, cliente?.exonerado || false);
@@ -52,19 +47,21 @@ function App() {
 
     setGuardando(true);
     try {
+      // 1. Guardar en tabla 'facturas'
       const { data: factura, error: errorF } = await supabase
         .from("facturas")
         .insert([{
           id_cliente: cliente.id_cliente,
           subtotal: totales.subtotal,
           iva: totales.iva,
-          total: totales.total,
-          exonerada: cliente?.exonerado || false
+          total: totales.total
         }])
-        .select().single();
+        .select()
+        .single();
 
       if (errorF) throw errorF;
 
+      // 2. Guardar en 'detalle_factura'
       const detalles = itemsFactura.map(item => ({
         id_factura: factura.id_factura,
         id_producto: item.id_producto,
@@ -76,6 +73,7 @@ function App() {
       const { error: errorD } = await supabase.from("detalle_factura").insert(detalles);
       if (errorD) throw errorD;
 
+      // 3. ACTUALIZAR ESTADO (Esto habilitará el botón de imprimir en TotalesFactura)
       setUltimaFactura({
         cliente: { ...cliente },
         items: [...itemsFactura],
@@ -89,12 +87,13 @@ function App() {
         timer: 2000
       });
 
+      // 4. Limpiar mesa de trabajo
       setItemsFactura([]);
       setCliente(null);
 
     } catch (error) {
       MiniToast.fire({ icon: 'error', title: 'Error Sistema' });
-      console.error(error);
+      console.error("Error:", error.message);
     } finally {
       setGuardando(false);
     }
@@ -104,6 +103,7 @@ function App() {
     <div className="min-h-screen bg-gray-100 py-8 px-4 font-sans">
       <div className="w-full max-w-[1400px] mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200">
 
+        {/* Header */}
         <div className="bg-emerald-800 text-white px-8 py-10 md:px-14 md:py-16 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div>
             <h1 className="text-4xl md:text-6xl font-light tracking-tighter text-emerald-50">Facturación</h1>
@@ -130,7 +130,7 @@ function App() {
               <TotalesFactura
                 totales={totales}
                 items={itemsFactura}
-                ultimaFactura={ultimaFactura}
+                ultimaFactura={ultimaFactura} // Contiene el ID de la DB
                 accionGuardar={manejarGuardado}
                 cargando={guardando}
               />

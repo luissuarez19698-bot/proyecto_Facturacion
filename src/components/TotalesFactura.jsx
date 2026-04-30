@@ -5,7 +5,13 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
   
   const imprimirUltima = () => {
     if (ultimaFactura) {
-      generarPDF(ultimaFactura.cliente, ultimaFactura.items, ultimaFactura.totales);
+      // Pasamos el cliente, items, totales Y el número de factura generado por la DB
+      generarPDF(
+        ultimaFactura.cliente, 
+        ultimaFactura.items, 
+        ultimaFactura.totales, 
+        ultimaFactura.numero
+      );
     }
   };
 
@@ -17,7 +23,7 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
           <span>C$ {totales.subtotal.toFixed(2)}</span>
         </div>
         
-        {/* Línea del IVA agregada */}
+        {/* Línea del IVA */}
         <div className="flex justify-between text-gray-500 text-sm">
           <span>IVA (15%):</span>
           <span>C$ {totales.iva.toFixed(2)}</span>
@@ -40,8 +46,10 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
           {cargando ? "GUARDANDO..." : "GUARDAR VENTA"}
         </button>
 
+        {/* El botón de descarga solo se activa después de guardar exitosamente */}
         <button
           onClick={imprimirUltima}
+          type="button"
           disabled={!ultimaFactura} 
           className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border-2 ${
             !ultimaFactura 
@@ -49,9 +57,18 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
               : 'border-emerald-600 text-emerald-700 hover:bg-emerald-50'
           }`}
         >
-          <span>📄</span> DESCARGAR FACTURA
+          <span>📄</span> 
+          {ultimaFactura 
+            ? `DESCARGAR FAC-${String(ultimaFactura.numero).padStart(5, '0')}` 
+            : "ESPERANDO VENTA"}
         </button>
       </div>
+
+      {ultimaFactura && (
+        <p className="text-[10px] text-center text-gray-400 uppercase tracking-widest font-bold">
+          Venta FAC-{String(ultimaFactura.numero).padStart(5, '0')} lista
+        </p>
+      )}
     </div>
   );
 }

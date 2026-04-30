@@ -8,20 +8,40 @@ function ClienteSelector({ onSeleccionar }) {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase.from("clientes").select("*").order("nombre");
-      setClientes(data || []);
-    };
-    fetch();
+    // Variable de control para evitar actualizaciones en componentes desmontados
+    let montado = true;
 
-    // Cerrar al hacer clic fuera
+    const fetchClientes = async () => {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("*")
+        .order("nombre");
+      
+      if (error) {
+        console.error("Error al cargar clientes:", error.message);
+        return;
+      }
+
+      if (montado) {
+        // Usamos un Set o simplemente reemplazamos el estado para evitar duplicados
+        setClientes(data || []);
+      }
+    };
+
+    fetchClientes();
+
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    
+    return () => {
+      montado = false; // Limpieza al desmontar
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const seleccionarCliente = (c) => {
@@ -38,9 +58,10 @@ function ClienteSelector({ onSeleccionar }) {
           Información del Cliente
         </label>
 
-        {/* Custom Selector UI */}
+        {/* Selector UI */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
             className="w-full bg-gray-50 border border-gray-100 hover:border-emerald-300 px-6 py-4 rounded-xl text-[18px] text-gray-800 font-bold flex items-center justify-center gap-3 transition-all shadow-inner group"
           >
@@ -55,23 +76,28 @@ function ClienteSelector({ onSeleccionar }) {
             </svg>
           </button>
 
-          {/* Menú Desplegable Elegante */}
+          {/* Menú Desplegable */}
           {isOpen && (
             <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-              {clientes.map((c) => (
-                <button
-                  key={c.id_cliente}
-                  onClick={() => seleccionarCliente(c)}
-                  className="w-full px-6 py-3 text-[16px] text-gray-700 font-medium hover:bg-emerald-50 hover:text-emerald-800 transition-colors border-b border-gray-50 last:border-0 text-center"
-                >
-                  {c.nombre}
-                </button>
-              ))}
+              {clientes.length > 0 ? (
+                clientes.map((c) => (
+                  <button
+                    key={c.id_cliente}
+                    type="button"
+                    onClick={() => seleccionarCliente(c)}
+                    className="w-full px-6 py-3 text-[16px] text-gray-700 font-medium hover:bg-emerald-50 hover:text-emerald-800 transition-colors border-b border-gray-50 last:border-0 text-center"
+                  >
+                    {c.nombre}
+                  </button>
+                ))
+              ) : (
+                <div className="px-6 py-3 text-gray-400 text-center">Cargando clientes...</div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Detalles Centrados */}
+        {/* Detalles del Cliente Seleccionado */}
         {seleccionado && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-emerald-50/40 rounded-2xl border border-emerald-100/50 animate-in slide-in-from-top-2 duration-300">
             <div className="flex flex-col items-center justify-center text-center">
