@@ -5,10 +5,11 @@ function ClienteSelector({ onSeleccionar }) {
   const [clientes, setClientes] = useState([]);
   const [seleccionado, setSeleccionado] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  // Nuevo estado para permitir el cambio manual de condición fiscal
+  const [esExonerado, setEsExonerado] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    // Variable de control para evitar actualizaciones en componentes desmontados
     let montado = true;
 
     const fetchClientes = async () => {
@@ -23,7 +24,6 @@ function ClienteSelector({ onSeleccionar }) {
       }
 
       if (montado) {
-        // Usamos un Set o simplemente reemplazamos el estado para evitar duplicados
         setClientes(data || []);
       }
     };
@@ -39,15 +39,26 @@ function ClienteSelector({ onSeleccionar }) {
     document.addEventListener("mousedown", handleClickOutside);
     
     return () => {
-      montado = false; // Limpieza al desmontar
+      montado = false;
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   const seleccionarCliente = (c) => {
     setSeleccionado(c);
-    onSeleccionar(c);
+    // Al seleccionar, cargamos la condición fiscal que viene de la DB
+    setEsExonerado(c.exonerado);
+    // Notificamos al padre con el objeto completo
+    onSeleccionar({ ...c, exonerado: c.exonerado });
     setIsOpen(false);
+  };
+
+  // Función para cambiar manualmente el IVA sin afectar la DB, solo la factura actual
+  const toggleFiscal = () => {
+    const nuevoEstado = !esExonerado;
+    setEsExonerado(nuevoEstado);
+    // Actualizamos al padre para que los totales se recalculen
+    onSeleccionar({ ...seleccionado, exonerado: nuevoEstado });
   };
 
   return (
@@ -58,7 +69,6 @@ function ClienteSelector({ onSeleccionar }) {
           Información del Cliente
         </label>
 
-        {/* Selector UI */}
         <div className="relative">
           <button
             type="button"
@@ -76,7 +86,6 @@ function ClienteSelector({ onSeleccionar }) {
             </svg>
           </button>
 
-          {/* Menú Desplegable */}
           {isOpen && (
             <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
               {clientes.length > 0 ? (
@@ -97,7 +106,6 @@ function ClienteSelector({ onSeleccionar }) {
           )}
         </div>
 
-        {/* Detalles del Cliente Seleccionado */}
         {seleccionado && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-emerald-50/40 rounded-2xl border border-emerald-100/50 animate-in slide-in-from-top-2 duration-300">
             <div className="flex flex-col items-center justify-center text-center">
@@ -111,13 +119,20 @@ function ClienteSelector({ onSeleccionar }) {
             
             <div className="flex flex-col items-center justify-center text-center">
               <p className="text-[11px] uppercase font-black text-emerald-700 tracking-widest mb-1">
-                Condición Fiscal
+                Condición Fiscal (Clic para cambiar)
               </p>
-              <p className={`text-[18px] font-black px-5 py-1 rounded-full ${
-                seleccionado.exonerado ? "text-blue-700 bg-blue-100/50" : "text-emerald-800 bg-emerald-100/50"
-              }`}>
-                {seleccionado.exonerado ? "EXONERADO (0% IVA)" : "GRAVADO (15% IVA)"}
-              </p>
+              {/* Botón interactivo para cambiar la condición fiscal al vuelo */}
+              <button 
+                type="button"
+                onClick={toggleFiscal}
+                className={`text-[16px] font-black px-5 py-2 rounded-full transition-all active:scale-95 shadow-sm border ${
+                  esExonerado 
+                    ? "text-blue-700 bg-blue-100 border-blue-200 hover:bg-blue-200" 
+                    : "text-emerald-800 bg-emerald-100 border-emerald-200 hover:bg-emerald-200"
+                }`}
+              >
+                {esExonerado ? "EXONERADO (0% IVA) 🔄" : "GRAVADO (15% IVA) 🔄"}
+              </button>
             </div>
           </div>
         )}
