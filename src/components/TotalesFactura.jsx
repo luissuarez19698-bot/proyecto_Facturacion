@@ -42,7 +42,7 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
 
         <button
           onClick={imprimirUltima}
-          disabled={!ultimaFactura} // SE DESACTIVA SI NO HAY VENTA HECHA
+          disabled={!ultimaFactura} 
           className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border-2 ${
             !ultimaFactura 
               ? 'border-gray-200 text-gray-400 cursor-not-allowed' 

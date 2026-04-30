@@ -83,14 +83,13 @@ function Factura() {
 
         <div className="p-8 flex justify-end bg-gray-50">
           <div className="w-full max-w-md">
-            {/* AQUÍ CAMBIAMOS EL NOMBRE DE LA PROP A accionGuardar */}
             <TotalesFactura
               totales={totales}
               clienteExonerado={clienteExonerado}
               cargando={guardando}
               accionGuardar={() => {
                 console.log("¡CONEXIÓN EXITOSA!");
-                procesoGuardar(); // O guardarFactura() según como se llame la tuya
+                procesoGuardar(); 
               }}
             />
           </div>

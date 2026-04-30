@@ -7,7 +7,6 @@ import TotalesFactura from "./components/TotalesFactura";
 import { calcularTotales } from "./components/calcularTotales";
 import { supabase } from "./database/supabaseconfig";
 
-// Configuración de Notificación Ultra-Mínima
 const MiniToast = Swal.mixin({
   toast: true,
   position: 'top-end',
@@ -105,11 +104,10 @@ function App() {
     <div className="min-h-screen bg-gray-100 py-8 px-4 font-sans">
       <div className="w-full max-w-[1400px] mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200">
 
-        {/* Encabezado Estilo MartitaTools */}
         <div className="bg-emerald-800 text-white px-8 py-10 md:px-14 md:py-16 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div>
-            <h1 className="text-4xl md:text-6xl font-light tracking-tighter">Facturación</h1>
-            <p className="text-emerald-200/50 text-xs md:text-sm uppercase tracking-[0.4em] mt-3 font-bold">Martita Tools — Sistema de Gestión</p>
+            <h1 className="text-4xl md:text-6xl font-light tracking-tighter text-emerald-100">Facturación</h1>
+            <p className="text-emerald-200 text-xs md:text-sm uppercase tracking-[0.4em] mt-3 font-bold">Martita Tools — Sistema de Gestión</p>
           </div>
           <div className="text-left sm:text-right border-l-2 border-emerald-600/50 pl-6 sm:pl-10">
             <p className="text-emerald-200/40 text-[10px] uppercase tracking-widest mb-1 font-bold">Tipo de Documento</p>
@@ -117,7 +115,6 @@ function App() {
           </div>
         </div>
 
-        {/* Contenido */}
         <div className="p-6 md:p-12 space-y-10">
           <div className="flex flex-col gap-6">
             <ClienteSelector onSeleccionar={setCliente} />

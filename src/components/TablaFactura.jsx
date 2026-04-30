@@ -14,7 +14,6 @@ function TablaFactura({ items, clienteExonerado, onEliminar }) {
 
   return (
     <div className="w-full">
-      {/* VISTA MÓVIL: Mapeo de Tarjetas */}
       <div className="md:hidden space-y-1">
         <label className="text-[11px] font-bold text-emerald-700 uppercase tracking-[0.15em] ml-1 mb-2 block">
           Resumen de Pedido
