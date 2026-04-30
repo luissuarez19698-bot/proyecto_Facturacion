@@ -106,7 +106,7 @@ function App() {
 
         <div className="bg-emerald-800 text-white px-8 py-10 md:px-14 md:py-16 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div>
-            <h1 className="text-4xl md:text-6xl font-light tracking-tighter text-emerald-100">Facturación</h1>
+          <h1 className="text-4xl md:text-6xl font-light tracking-tighter text-emerald-50">Facturación</h1>
             <p className="text-emerald-200 text-xs md:text-sm uppercase tracking-[0.4em] mt-3 font-bold">Martita Tools — Sistema de Gestión</p>
           </div>
           <div className="text-left sm:text-right border-l-2 border-emerald-600/50 pl-6 sm:pl-10">
