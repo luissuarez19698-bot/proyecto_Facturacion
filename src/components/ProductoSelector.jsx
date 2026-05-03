@@ -150,4 +150,6 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   );
 }
 
+
+//añañingo
 export default ProductoSelector;
