@@ -60,6 +60,19 @@ function App() {
   const manejarGuardado = async () => {
     if (!cliente || itemsFactura.length === 0) return MiniToast.fire({ icon: 'warning', title: 'Faltan datos' });
     
+    // VALIDACIÓN RESTAURADA: Monto recibido y saldo suficiente
+    const recibidoNumerico = parseFloat(pagoRecibido);
+    const recibidoEnNIO = monedaVista === "USD" ? recibidoNumerico * TASA_OFICIAL : recibidoNumerico;
+
+    if (!pagoRecibido || recibidoNumerico <= 0) {
+      return Swal.fire("Monto Inválido", "Debe ingresar un monto válido y mayor a cero.", "warning");
+    }
+
+    if (recibidoEnNIO < totales.total) {
+      const faltante = totales.total - recibidoEnNIO;
+      return Swal.fire("Pago Insuficiente", `El monto no cubre el total. Faltan: C$ ${faltante.toFixed(2)}`, "error");
+    }
+
     if (metodoPago === "Cheque" && !numeroReferencia) {
       return Swal.fire("Atención", "Ingrese número de Cheque", "warning");
     }
@@ -72,7 +85,7 @@ function App() {
         .insert([{
           id_cliente: cliente.id_cliente,
           subtotal: totales.subtotal,
-          iva: totales.iva,
+          iva: totales.iva, // 15% ya calculado en Totales
           total: totales.total,
           metodo_pago: metodoPago,
           numero_cheque: metodoPago === "Cheque" ? numeroReferencia : null,
@@ -93,13 +106,18 @@ function App() {
 
       await supabase.from("detalle_factura").insert(detalles);
 
-      // 3. Actualizar estado para impresión
+      // 3. Actualizar estado para impresión (CORREGIDO PARA PDF)
       setUltimaFactura({
         cliente: { ...cliente },
         items: [...itemsFactura],
         totales: { ...totales },
         numero: factura.id_factura,
-        pago: { metodo: metodoPago, ref: numeroReferencia }
+        pago: { 
+          metodo: metodoPago, 
+          ref: numeroReferencia,
+          recibido: recibidoEnNIO,
+          vuelto: calcularCambio()
+        }
       });
 
       MiniToast.fire({ icon: 'success', title: 'Venta Registrada' });
@@ -188,9 +206,8 @@ function App() {
                         {metodoPago === "Tarjeta" ? "Monto Depositado" : 
                          metodoPago === "Cheque" ? "Monto del Cheque" : "Monto Recibido"} ({monedaVista})
                       </label>
-                      {/* Badge Tasa de Cambio Completo */}
                       <span className="text-[22px] font-black bg-emerald-600 text-white px-5 py-2 rounded-xl shadow-xl uppercase tracking-tighter italic border-b-4 border-emerald-800 flex flex-col leading-none items-center">
-                        <span className="text-[9px] tracking-[0.2em] mb-1 opacity-90">TASA DE CAMBIO</span>
+                        <span className="text-[12.5px] tracking-[0.2em] mb-1 text-center block mx-auto">TASA DE CAMBIO</span>
                         C$ {TASA_OFICIAL}
                       </span>
                     </div>
@@ -208,7 +225,7 @@ function App() {
                     </div>
                   </div>
                   
-                  {pagoRecibido && (metodoPago === "Efectivo" || metodoPago === "Cheque") && (
+                  {pagoRecibido && (metodoPago === "Efectivo" || metodoPago === "Cheque" || metodoPago === "Tarjeta") && (
                     <div className="bg-white border-2 border-dashed border-emerald-200 p-4 rounded-2xl flex justify-between items-center">
                       <span className="text-xs font-bold text-gray-500 uppercase italic">Vuelto (C$):</span>
                       <span className={`text-2xl font-black ${calcularCambio() < 0 ? 'text-red-500' : 'text-emerald-600'}`}>

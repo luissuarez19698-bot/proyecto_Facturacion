@@ -15,7 +15,8 @@ function TablaFactura({ items, clienteExonerado, onEliminar }) {
   return (
     <div className="w-full">
       <div className="md:hidden space-y-1">
-        <label className="text-[11px] font-bold text-emerald-700 uppercase tracking-[0.15em] ml-1 mb-2 block">
+        {/* Tamaño de label móvil ajustado */}
+        <label className="text-[14px] font-bold text-emerald-700 uppercase tracking-[0.15em] ml-1 mb-2 block">
           Resumen de Pedido
         </label>
         {items.map((item, i) => (
@@ -43,18 +44,21 @@ function TablaFactura({ items, clienteExonerado, onEliminar }) {
           <tbody className="divide-y divide-gray-100">
             {items.map((item, i) => (
               <tr key={i} className="hover:bg-emerald-50/30 transition-colors">
-                <td className="p-4 text-center font-medium text-gray-700 truncate">
+                {/* Texto de producto subido a 17px */}
+                <td className="p-4 text-center font-bold text-[17px] text-gray-700 truncate">
                   {item.nombre}
                 </td>
-                <td className="p-4 text-center text-gray-600">
+                {/* Texto de precio subido a 17px */}
+                <td className="p-4 text-center text-[17px] text-gray-600">
                   C$ {item.precio.toFixed(2)}
                 </td>
                 <td className="p-4 text-center">
-                  <span className="bg-gray-100 px-3 py-1 rounded-full font-semibold">
+                  <span className="bg-gray-100 px-4 py-1.5 rounded-full font-black text-[16px]">
                     {item.cantidad}
                   </span>
                 </td>
-                <td className="p-4 text-center font-bold text-emerald-700">
+                {/* Texto de total de línea subido a 18px */}
+                <td className="p-4 text-center font-black text-[18px] text-emerald-700">
                   C$ {(
                     item.precio * 
                     item.cantidad * 
@@ -64,7 +68,7 @@ function TablaFactura({ items, clienteExonerado, onEliminar }) {
                 <td className="p-4 text-center">
                   <button 
                     onClick={() => onEliminar(i)} 
-                    className="text-red-400 hover:text-red-600 hover:scale-125 transition-all font-bold"
+                    className="text-red-400 hover:text-red-600 hover:scale-125 transition-all font-bold text-xl"
                   >
                     ✕
                   </button>

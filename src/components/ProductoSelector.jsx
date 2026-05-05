@@ -10,15 +10,25 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // Función de carga extraída para reutilización
+  const cargarProductos = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("productos").select("*").order("nombre");
+    if (error) console.error("Error:", error);
+    else setProductos(data || []);
+    setLoading(false);
+  };
+
+  // Recarga productos cuando se limpia la factura (venta completada)
+  useEffect(() => {
+    if (itemsActuales.length === 0) {
+      cargarProductos();
+    }
+  }, [itemsActuales.length]);
+
   useEffect(() => {
     const handleResize = () => setAnchoPantalla(window.innerWidth);
     window.addEventListener('resize', handleResize);
-    const cargarProductos = async () => {
-      const { data, error } = await supabase.from("productos").select("*").order("nombre");
-      if (error) console.error("Error:", error);
-      else setProductos(data || []);
-      setLoading(false);
-    };
     cargarProductos();
 
     const handleClickOutside = (event) => {
@@ -92,7 +102,6 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
           )}
         </div>
 
-        {/* Ajuste de grid para mejor distribución */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
           
           <div className="md:col-span-7 relative">
@@ -134,7 +143,6 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
             )}
           </div>
 
-          {/* Sección de cantidad y botón añadir alineada */}
           <div className="md:col-span-5 flex flex-row gap-2 items-center justify-center">
             <div className="flex items-center justify-between bg-gray-100 rounded-xl p-1 border border-gray-200 w-32 shrink-0">
               <button type="button" onClick={decrementar} disabled={cantidad <= 1 || !productoId} className="w-8 h-10 flex items-center justify-center text-emerald-700 font-black text-xl disabled:opacity-20"> − </button>
