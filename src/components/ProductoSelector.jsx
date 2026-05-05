@@ -47,10 +47,19 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
     .reduce((acc, item) => acc + item.cantidad, 0);
 
   const stockReal = productoDB ? (productoDB.stock - cantidadEnTabla) : 0;
-  const esCantidadInvalida = cantidad > stockReal || cantidad <= 0;
+  const esCantidadInvalida = cantidad > stockReal || cantidad <= 0 || cantidad === "";
 
-  const incrementar = () => { if (cantidad < stockReal) setCantidad(prev => prev + 1); };
-  const decrementar = () => { if (cantidad > 1) setCantidad(prev => prev - 1); };
+  const incrementar = () => { if (cantidad < stockReal) setCantidad(prev => Number(prev) + 1); };
+  const decrementar = () => { if (cantidad > 1) setCantidad(prev => Number(prev) - 1); };
+
+  const handleCantidadChange = (e) => {
+    const valor = e.target.value;
+    if (valor === "") { setCantidad(""); return; }
+    const num = parseInt(valor);
+    if (num > stockReal) setCantidad(stockReal);
+    else if (num < 0) setCantidad(1);
+    else setCantidad(num);
+  };
 
   const handleAgregar = () => {
     if (!productoId || esCantidadInvalida) return;
@@ -74,9 +83,8 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
             Añadir Productos
           </label>
           
-          {/* Bloque de stock estático sin animaciones */}
           {productoId && (
-            <div className="bg-emerald-600 px-6 py-1 rounded-full shadow-sm border border-emerald-700">
+            <div className="bg-emerald-600 px-6 py-1 rounded-full shadow-sm border border-emerald-700 transition-all">
               <span className="text-[14px] font-black text-white uppercase tracking-wider">
                 Stock Disponible: {stockReal}
               </span>
@@ -84,21 +92,19 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
           )}
         </div>
 
+        {/* Ajuste de grid para mejor distribución */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
           
-          <div className="md:col-span-8 relative">
+          <div className="md:col-span-7 relative">
             <button
               onClick={() => !loading && setIsOpen(!isOpen)}
               disabled={loading}
-              className="w-full bg-gray-50 border border-gray-200 hover:border-emerald-500 px-6 py-4 rounded-xl text-[16px] text-gray-800 font-bold flex items-center justify-between gap-3"
+              className="w-full bg-gray-50 border border-gray-200 hover:border-emerald-500 px-5 py-4 rounded-xl text-[16px] text-gray-800 font-bold flex items-center justify-between gap-3 transition-colors"
             >
               <span className={`truncate ${productoId ? 'text-gray-900' : 'text-gray-400'}`}>
                 {productoId ? simplificarNombre(productoDB?.nombre) : "— SELECCIONAR PRODUCTO —"}
               </span>
-              <svg 
-                className="w-6 h-6 text-emerald-700 shrink-0" 
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-              >
+              <svg className="w-5 h-5 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
@@ -109,7 +115,6 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
                   const enTabla = itemsActuales.find(i => i.id_producto === p.id_producto)?.cantidad || 0;
                   const disponible = p.stock - enTabla;
                   const agotado = disponible <= 0;
-
                   return (
                     <button
                       key={p.id_producto}
@@ -119,7 +124,7 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
                         ${agotado ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'hover:bg-emerald-600 hover:text-white text-gray-800'}`}
                     >
                       <span className={agotado ? 'line-through' : ''}>{p.nombre}</span>
-                      <span className={`text-[12px] px-2 py-1 rounded font-black ${agotado ? 'bg-red-200 text-red-700' : 'bg-emerald-100 text-emerald-900'}`}>
+                      <span className={`text-[11px] px-2 py-1 rounded font-black ${agotado ? 'bg-red-200 text-red-700' : 'bg-emerald-100 text-emerald-900'}`}>
                         {agotado ? 'AGOTADO' : `DISP: ${disponible}`}
                       </span>
                     </button>
@@ -129,17 +134,26 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
             )}
           </div>
 
-          <div className="md:col-span-4 flex flex-row gap-3">
-            <div className="flex flex-1 items-center justify-between bg-gray-100 rounded-xl p-1 border border-gray-200">
-              <button type="button" onClick={decrementar} disabled={cantidad <= 1 || !productoId} className="w-10 h-10 flex items-center justify-center text-emerald-700 font-black text-2xl disabled:opacity-10"> − </button>
-              <span className="text-[18px] font-black text-gray-900">{cantidad}</span>
-              <button type="button" onClick={incrementar} disabled={cantidad >= stockReal || !productoId} className="w-10 h-10 flex items-center justify-center text-emerald-700 font-black text-2xl disabled:opacity-10"> + </button>
+          {/* Sección de cantidad y botón añadir alineada */}
+          <div className="md:col-span-5 flex flex-row gap-2 items-center justify-center">
+            <div className="flex items-center justify-between bg-gray-100 rounded-xl p-1 border border-gray-200 w-32 shrink-0">
+              <button type="button" onClick={decrementar} disabled={cantidad <= 1 || !productoId} className="w-8 h-10 flex items-center justify-center text-emerald-700 font-black text-xl disabled:opacity-20"> − </button>
+              
+              <input 
+                type="number"
+                value={cantidad}
+                onChange={handleCantidadChange}
+                disabled={!productoId}
+                className="w-10 bg-transparent text-center text-[18px] font-black text-gray-900 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+
+              <button type="button" onClick={incrementar} disabled={cantidad >= stockReal || !productoId} className="w-8 h-10 flex items-center justify-center text-emerald-700 font-black text-xl disabled:opacity-20"> + </button>
             </div>
 
             <button
               onClick={handleAgregar}
               disabled={!productoId || esCantidadInvalida}
-              className="flex-[1.2] bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-black py-4 rounded-xl text-[14px] uppercase tracking-widest shadow-md"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-black py-4 rounded-xl text-[13px] uppercase tracking-tighter shadow-md active:scale-95 transition-all"
             >
               Añadir
             </button>
@@ -150,6 +164,4 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   );
 }
 
-
-//añañingo
 export default ProductoSelector;

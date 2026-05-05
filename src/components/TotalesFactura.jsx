@@ -1,16 +1,20 @@
 import React from 'react';
 import { generarPDF } from './generarPDF';
 
-function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando }) {
+function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando, metodoPago, tasaCambio }) {
   
+  const totalUSD = (totales.total / tasaCambio).toFixed(2);
+
   const imprimirUltima = () => {
     if (ultimaFactura) {
-      // Pasamos el cliente, items, totales Y el número de factura generado por la DB
       generarPDF(
         ultimaFactura.cliente, 
         ultimaFactura.items, 
         ultimaFactura.totales, 
-        ultimaFactura.numero
+        ultimaFactura.numero,
+        ultimaFactura.metodoPago,
+        ultimaFactura.numeroCheque,
+        ultimaFactura.tasaCambio
       );
     }
   };
@@ -18,20 +22,25 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
   return (
     <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm w-full max-w-sm space-y-4">
       <div className="space-y-2">
-        <div className="flex justify-between text-gray-500 text-sm">
-          <span>Subtotal:</span>
+        <div className="flex justify-between text-gray-500 text-sm font-bold">
+          <span>SUBTOTAL:</span>
           <span>C$ {totales.subtotal.toFixed(2)}</span>
         </div>
-        
-        {/* Línea del IVA */}
-        <div className="flex justify-between text-gray-500 text-sm">
+        <div className="flex justify-between text-gray-500 text-sm font-bold">
           <span>IVA (15%):</span>
           <span>C$ {totales.iva.toFixed(2)}</span>
         </div>
 
-        <div className="flex justify-between text-2xl font-black text-emerald-700 pt-2 border-t">
-          <span>TOTAL</span>
-          <span>C$ {totales.total.toFixed(2)}</span>
+        <div className="pt-2 border-t flex flex-col items-end">
+          <span className="text-[10px] font-black text-emerald-600 uppercase">Total a Pagar</span>
+          <div className="text-3xl font-black text-emerald-800">
+            C$ {totales.total.toFixed(2)}
+          </div>
+          {metodoPago === "Dolares" && (
+            <div className="text-lg font-black text-blue-600 animate-pulse">
+              U$ {totalUSD}
+            </div>
+          )}
         </div>
       </div>
 
@@ -39,36 +48,24 @@ function TotalesFactura({ totales, items, ultimaFactura, accionGuardar, cargando
         <button
           onClick={accionGuardar}
           disabled={cargando || items.length === 0}
-          className={`w-full py-4 rounded-xl font-bold text-white transition-all ${
-            cargando || items.length === 0 ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700'
+          className={`w-full py-4 rounded-xl font-black text-white transition-all shadow-lg ${
+            cargando || items.length === 0 ? 'bg-gray-400' : 'bg-emerald-600 hover:bg-emerald-700 active:scale-95'
           }`}
         >
-          {cargando ? "GUARDANDO..." : "GUARDAR VENTA"}
+          {cargando ? "PROCESANDO..." : "COMPLETAR VENTA"}
         </button>
 
-        {/* El botón de descarga solo se activa después de guardar exitosamente */}
         <button
           onClick={imprimirUltima}
           type="button"
           disabled={!ultimaFactura} 
           className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border-2 ${
-            !ultimaFactura 
-              ? 'border-gray-200 text-gray-400 cursor-not-allowed' 
-              : 'border-emerald-600 text-emerald-700 hover:bg-emerald-50'
+            !ultimaFactura ? 'border-gray-100 text-gray-300' : 'border-emerald-600 text-emerald-700 hover:bg-emerald-50'
           }`}
         >
-          <span>📄</span> 
-          {ultimaFactura 
-            ? `DESCARGAR FAC-${String(ultimaFactura.numero).padStart(5, '0')}` 
-            : "ESPERANDO VENTA"}
+          <span>PDF FACTURA</span>
         </button>
       </div>
-
-      {ultimaFactura && (
-        <p className="text-[10px] text-center text-gray-400 uppercase tracking-widest font-bold">
-          Venta FAC-{String(ultimaFactura.numero).padStart(5, '0')} lista
-        </p>
-      )}
     </div>
   );
 }
