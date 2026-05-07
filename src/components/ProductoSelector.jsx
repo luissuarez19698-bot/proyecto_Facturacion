@@ -12,7 +12,7 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   const cargarProductos = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/productos');
+      const response = await fetch('https://api-martitatools.onrender.com/productos');
       if (!response.ok) throw new Error('Error en servidor');
       const data = await response.json();
       setProductos(data || []);

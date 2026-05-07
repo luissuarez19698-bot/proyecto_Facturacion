@@ -75,14 +75,14 @@ function App() {
     }
 
     if (metodoPago === "Cheque") {
-      const checkResp = await fetch(`http://localhost:5000/facturas/verificar-cheque/${numeroReferencia}`);
+      const checkResp = await fetch(`https://api-martitatools.onrender.com/facturas/verificar-cheque/${numeroReferencia}`);
       const { existe } = await checkResp.json();
       if (existe) return Swal.fire("Error", `El cheque "${numeroReferencia}" ya existe.`, "error");
     }
 
     setGuardando(true);
     try {
-      const respFactura = await fetch('http://localhost:5000/facturas', {
+      const respFactura = await fetch('https://api-martitatools.onrender.com/facturas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,7 +107,7 @@ function App() {
         subtotal_linea: item.precio * item.cantidad
       }));
 
-      const respDetalle = await fetch('http://localhost:5000/facturas/detalles', {
+      const respDetalle = await fetch('https://api-martitatools.onrender.com/facturas/detalles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ detalles })

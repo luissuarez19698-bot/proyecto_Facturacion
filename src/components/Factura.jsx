@@ -31,14 +31,14 @@ function Factura() {
     if (metodoPago === "Cheque") {
       if (!numeroCheque) return alert("Por favor, ingrese el número de cheque.");
       
-      const checkResp = await fetch(`http://localhost:5000/facturas/verificar-cheque/${numeroCheque}`);
+      const checkResp = await fetch(`https://api-martitatools.onrender.com/facturas/verificar-cheque/${numeroCheque}`);
       const { existe } = await checkResp.json();
       if (existe) return alert("ERROR: Este número de cheque ya fue registrado anteriormente.");
     }
 
     setGuardando(true);
     try {
-      const respFactura = await fetch('http://localhost:5000/facturas', {
+      const respFactura = await fetch('https://api-martitatools.onrender.com/facturas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -61,7 +61,7 @@ function Factura() {
         subtotal_linea: item.precio * item.cantidad
       }));
 
-      const respDetalle = await fetch('http://localhost:5000/facturas/detalles', {
+      const respDetalle = await fetch('https://api-martitatools.onrender.com/facturas/detalles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ detalles })

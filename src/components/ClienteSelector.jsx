@@ -12,7 +12,7 @@ function ClienteSelector({ onSeleccionar }) {
 
     const fetchClientes = async () => {
       try {
-        const response = await fetch('http://localhost:5000/clientes');
+        const response = await fetch('https://api-martitatools.onrender.com/clientes');
         if (!response.ok) throw new Error('Error en servidor');
         const data = await response.json();
         if (montado) {
