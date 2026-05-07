@@ -5,7 +5,6 @@ import ProductoSelector from "./components/ProductoSelector";
 import TablaFactura from "./components/TablaFactura";
 import TotalesFactura from "./components/TotalesFactura";
 import { calcularTotales } from "./components/calcularTotales";
-import { supabase } from "./database/supabaseconfig";
 
 const MiniToast = Swal.mixin({
   toast: true,
@@ -25,7 +24,6 @@ function App() {
   const [guardando, setGuardando] = useState(false);
   const [ultimaFactura, setUltimaFactura] = useState(null);
 
-  // Lógica de Pago y Moneda
   const [metodoPago, setMetodoPago] = useState("Efectivo");
   const [numeroReferencia, setNumeroReferencia] = useState("");
   const [monedaVista, setMonedaVista] = useState("NIO");
@@ -60,7 +58,6 @@ function App() {
   const manejarGuardado = async () => {
     if (!cliente || itemsFactura.length === 0) return MiniToast.fire({ icon: 'warning', title: 'Faltan datos' });
     
-    // VALIDACIÓN RESTAURADA: Monto recibido y saldo suficiente
     const recibidoNumerico = parseFloat(pagoRecibido);
     const recibidoEnNIO = monedaVista === "USD" ? recibidoNumerico * TASA_OFICIAL : recibidoNumerico;
 
@@ -77,25 +74,31 @@ function App() {
       return Swal.fire("Atención", "Ingrese número de Cheque", "warning");
     }
 
+    if (metodoPago === "Cheque") {
+      const checkResp = await fetch(`http://localhost:5000/facturas/verificar-cheque/${numeroReferencia}`);
+      const { existe } = await checkResp.json();
+      if (existe) return Swal.fire("Error", `El cheque "${numeroReferencia}" ya existe.`, "error");
+    }
+
     setGuardando(true);
     try {
-      // 1. Guardar Factura con lógica de pago completa
-      const { data: factura, error: errorF } = await supabase
-        .from("facturas")
-        .insert([{
+      const respFactura = await fetch('http://localhost:5000/facturas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           id_cliente: cliente.id_cliente,
           subtotal: totales.subtotal,
-          iva: totales.iva, // 15% ya calculado en Totales
+          iva: totales.iva,
           total: totales.total,
           metodo_pago: metodoPago,
           numero_cheque: metodoPago === "Cheque" ? numeroReferencia : null,
           tasa_cambio: TASA_OFICIAL
-        }])
-        .select().single();
+        })
+      });
 
-      if (errorF) throw errorF;
+      if (!respFactura.ok) throw new Error("Error al crear factura");
+      const factura = await respFactura.json();
 
-      // 2. Guardar Detalles
       const detalles = itemsFactura.map(item => ({
         id_factura: factura.id_factura,
         id_producto: item.id_producto,
@@ -104,9 +107,14 @@ function App() {
         subtotal_linea: item.precio * item.cantidad
       }));
 
-      await supabase.from("detalle_factura").insert(detalles);
+      const respDetalle = await fetch('http://localhost:5000/facturas/detalles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ detalles })
+      });
 
-      // 3. Actualizar estado para impresión (CORREGIDO PARA PDF)
+      if (!respDetalle.ok) throw new Error("Error al guardar detalles");
+
       setUltimaFactura({
         cliente: { ...cliente },
         items: [...itemsFactura],
@@ -122,7 +130,6 @@ function App() {
 
       MiniToast.fire({ icon: 'success', title: 'Venta Registrada' });
       
-      // 4. Limpiar mesa de trabajo
       setItemsFactura([]); 
       setCliente(null); 
       setMetodoPago("Efectivo"); 
@@ -130,10 +137,7 @@ function App() {
       setPagoRecibido("");
 
     } catch (error) {
-      let mensajeAmigable = "Error al guardar.";
-      if (error.code === '23505') mensajeAmigable = `El cheque "${numeroReferencia}" ya existe.`;
-      
-      Swal.fire({ title: "Error", text: mensajeAmigable, icon: "error", confirmButtonColor: "#065f46" });
+      Swal.fire({ title: "Error", text: "Error al guardar en el servidor.", icon: "error", confirmButtonColor: "#065f46" });
     } finally {
       setGuardando(false);
     }
@@ -143,7 +147,6 @@ function App() {
     <div className="min-h-screen bg-gray-100 py-6 px-4 font-sans text-[#3D454B]">
       <div className="w-full max-w-[1400px] mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200">
         
-        {/* Header Venta Directa */}
         <div className="bg-emerald-800 text-white px-8 py-10 md:px-14 flex flex-col sm:flex-row justify-between items-center gap-6">
           <div className="text-center sm:text-left">
             <h1 className="text-4xl md:text-6xl font-black tracking-tighter italic">FACTURACIÓN</h1>
@@ -160,13 +163,11 @@ function App() {
         <div className="p-6 md:p-10 space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            {/* Columna Izquierda: Selectores */}
             <div className="lg:col-span-7 space-y-6">
               <ClienteSelector onSeleccionar={setCliente} />
               <ProductoSelector onAgregar={agregarProducto} itemsActuales={itemsFactura} />
             </div>
 
-            {/* Columna Derecha: Pagos y Tasa */}
             <div className="lg:col-span-5 bg-gray-50 border-2 border-gray-200 rounded-3xl p-6 flex flex-col shadow-sm">
               <div className="space-y-6 flex-grow">
                 <h3 className="text font-black text-gray-400 uppercase tracking-[0.3em] text-center italic">Método de Pago</h3>

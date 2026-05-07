@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "../database/supabaseconfig";
 
 function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   const [productos, setProductos] = useState([]);
@@ -10,16 +9,20 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Función de carga extraída para reutilización
   const cargarProductos = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("productos").select("*").order("nombre");
-    if (error) console.error("Error:", error);
-    else setProductos(data || []);
-    setLoading(false);
+    try {
+      const response = await fetch('http://localhost:5000/productos');
+      if (!response.ok) throw new Error('Error en servidor');
+      const data = await response.json();
+      setProductos(data || []);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Recarga productos cuando se limpia la factura (venta completada)
   useEffect(() => {
     if (itemsActuales.length === 0) {
       cargarProductos();

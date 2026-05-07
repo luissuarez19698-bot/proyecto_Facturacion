@@ -1,11 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "../database/supabaseconfig";
 
 function ClienteSelector({ onSeleccionar }) {
   const [clientes, setClientes] = useState([]);
   const [seleccionado, setSeleccionado] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  // Nuevo estado para permitir el cambio manual de condición fiscal
   const [esExonerado, setEsExonerado] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -13,18 +11,15 @@ function ClienteSelector({ onSeleccionar }) {
     let montado = true;
 
     const fetchClientes = async () => {
-      const { data, error } = await supabase
-        .from("clientes")
-        .select("*")
-        .order("nombre");
-      
-      if (error) {
+      try {
+        const response = await fetch('http://localhost:5000/clientes');
+        if (!response.ok) throw new Error('Error en servidor');
+        const data = await response.json();
+        if (montado) {
+          setClientes(data || []);
+        }
+      } catch (error) {
         console.error("Error al cargar clientes:", error.message);
-        return;
-      }
-
-      if (montado) {
-        setClientes(data || []);
       }
     };
 
@@ -46,18 +41,14 @@ function ClienteSelector({ onSeleccionar }) {
 
   const seleccionarCliente = (c) => {
     setSeleccionado(c);
-    // Al seleccionar, cargamos la condición fiscal que viene de la DB
     setEsExonerado(c.exonerado);
-    // Notificamos al padre con el objeto completo
     onSeleccionar({ ...c, exonerado: c.exonerado });
     setIsOpen(false);
   };
 
-  // Función para cambiar manualmente el IVA sin afectar la DB, solo la factura actual
   const toggleFiscal = () => {
     const nuevoEstado = !esExonerado;
     setEsExonerado(nuevoEstado);
-    // Actualizamos al padre para que los totales se recalculen
     onSeleccionar({ ...seleccionado, exonerado: nuevoEstado });
   };
 
@@ -121,7 +112,6 @@ function ClienteSelector({ onSeleccionar }) {
               <p className="text-[11px] uppercase font-black text-emerald-700 tracking-widest mb-1">
                 Condición Fiscal (Clic para cambiar)
               </p>
-              {/* Botón interactivo para cambiar la condición fiscal al vuelo */}
               <button 
                 type="button"
                 onClick={toggleFiscal}

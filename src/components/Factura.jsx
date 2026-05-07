@@ -3,17 +3,15 @@ import ClienteSelector from "./ClienteSelector";
 import ProductoSelector from "./ProductoSelector";
 import TablaFactura from "./TablaFactura";
 import TotalesFactura from "./TotalesFactura";
-import { supabase } from "../database/supabaseconfig";
 
 function Factura() {
   const [cliente, setCliente] = useState(null);
   const [items, setItems] = useState([]);
   const [guardando, setGuardando] = useState(false);
   
-  // --- NUEVOS ESTADOS DE PAGO ---
   const [metodoPago, setMetodoPago] = useState("Efectivo");
   const [numeroCheque, setNumeroCheque] = useState("");
-  const TASA_OFICIAL = 36.62; // Tasa para Nicaragua
+  const TASA_OFICIAL = 36.62;
 
   const subtotal = items.reduce((acc, item) => acc + (item.precio * item.cantidad), 0);
   const clienteExonerado = cliente?.exonerado || false;
@@ -30,33 +28,30 @@ function Factura() {
   const procesoGuardar = async () => {
     if (!cliente || items.length === 0) return alert("Faltan datos");
 
-    // VALIDACIÓN DE CHEQUE ÚNICO
     if (metodoPago === "Cheque") {
       if (!numeroCheque) return alert("Por favor, ingrese el número de cheque.");
       
-      const { data: existe } = await supabase
-        .from("facturas")
-        .select("numero_cheque")
-        .eq("numero_cheque", numeroCheque)
-        .maybeSingle();
-
+      const checkResp = await fetch(`http://localhost:5000/facturas/verificar-cheque/${numeroCheque}`);
+      const { existe } = await checkResp.json();
       if (existe) return alert("ERROR: Este número de cheque ya fue registrado anteriormente.");
     }
 
     setGuardando(true);
     try {
-      const { data: factura, error: errorF } = await supabase
-        .from("facturas")
-        .insert([{ 
+      const respFactura = await fetch('http://localhost:5000/facturas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
           id_cliente: cliente.id_cliente, 
           ...totales,
           metodo_pago: metodoPago,
           numero_cheque: metodoPago === "Cheque" ? numeroCheque : null,
           tasa_cambio: TASA_OFICIAL
-        }])
-        .select().single();
+        })
+      });
 
-      if (errorF) throw errorF;
+      if (!respFactura.ok) throw new Error("Error al crear factura");
+      const factura = await respFactura.json();
 
       const detalles = items.map(item => ({
         id_factura: factura.id_factura,
@@ -66,8 +61,13 @@ function Factura() {
         subtotal_linea: item.precio * item.cantidad
       }));
 
-      const { error: errorD } = await supabase.from("detalle_factura").insert(detalles);
-      if (errorD) throw errorD;
+      const respDetalle = await fetch('http://localhost:5000/facturas/detalles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ detalles })
+      });
+
+      if (!respDetalle.ok) throw new Error("Error al guardar detalles");
 
       alert("Venta guardada con éxito.");
       setItems([]);
@@ -90,7 +90,6 @@ function Factura() {
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <ClienteSelector onSeleccionar={setCliente} />
           
-          {/* INTERFAZ DE FORMAS DE PAGO */}
           <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100 space-y-4">
             <h3 className="text-emerald-800 font-black text-sm uppercase tracking-widest text-center">Forma de Pago</h3>
             <div className="grid grid-cols-2 gap-3">
