@@ -49,7 +49,7 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
     if (!nombre) return "";
     if (anchoPantalla < 768) {
       const palabras = nombre.trim().split(/\s+/);
-      return palabras.length <= 2 ? nombre : `${palabras[0]} ${palabras[1]}...`;
+      return palabras.length <= 2 ? nombre : `${palabras[0]} ${palabras[1]} ${palabras[2]} ...`;
     }
     return nombre.length > 80 ? nombre.substring(0, 80) + "..." : nombre;
   };
@@ -113,7 +113,7 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
               disabled={loading}
               className="w-full bg-gray-50 border border-gray-200 hover:border-emerald-500 px-5 py-4 rounded-xl text-[16px] text-gray-800 font-bold flex items-center justify-between gap-3 transition-colors"
             >
-              <span className={`truncate ${productoId ? 'text-gray-900' : 'text-gray-400'}`}>
+              <span className={`truncate flex-1 text-center ${productoId ? 'text-gray-900' : 'text-gray-400'}`}>
                 {productoId ? simplificarNombre(productoDB?.nombre) : "— SELECCIONAR PRODUCTO —"}
               </span>
               <svg className="w-5 h-5 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

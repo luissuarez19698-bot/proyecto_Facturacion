@@ -1,23 +1,29 @@
 import { useEffect, useState, useRef } from "react";
 
-function ClienteSelector({ onSeleccionar }) {
+// 1. Añadimos 'clienteActual' a las props
+function ClienteSelector({ onSeleccionar, clienteActual }) {
   const [clientes, setClientes] = useState([]);
   const [seleccionado, setSeleccionado] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [esExonerado, setEsExonerado] = useState(false);
   const dropdownRef = useRef(null);
 
+  // LOGICA DE RESETEO: Si en App.jsx el cliente es null, limpiamos el estado interno
+  useEffect(() => {
+    if (!clienteActual) {
+      setSeleccionado(null);
+      setEsExonerado(false);
+    }
+  }, [clienteActual]);
+
   useEffect(() => {
     let montado = true;
-
     const fetchClientes = async () => {
       try {
         const response = await fetch('https://api-martitatools.onrender.com/clientes');
         if (!response.ok) throw new Error('Error en servidor');
         const data = await response.json();
-        if (montado) {
-          setClientes(data || []);
-        }
+        if (montado) setClientes(data || []);
       } catch (error) {
         console.error("Error al cargar clientes:", error.message);
       }
@@ -30,9 +36,7 @@ function ClienteSelector({ onSeleccionar }) {
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    
     return () => {
       montado = false;
       document.removeEventListener("mousedown", handleClickOutside);
@@ -55,7 +59,6 @@ function ClienteSelector({ onSeleccionar }) {
   return (
     <div className="w-full max-w-4xl mx-auto" ref={dropdownRef}>
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
-        
         <label className="block text-[14px] font-black text-emerald-800 uppercase tracking-[0.25em] text-center">
           Información del Cliente
         </label>
