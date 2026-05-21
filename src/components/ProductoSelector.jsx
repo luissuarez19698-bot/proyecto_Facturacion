@@ -1,4 +1,6 @@
 import { useEffect, useState, useRef } from "react";
+// 1. Importamos la instancia de Supabase que configuramos antes
+import { supabase } from "../supabase"; 
 
 function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   const [productos, setProductos] = useState([]);
@@ -9,15 +11,18 @@ function ProductoSelector({ onAgregar, itemsActuales = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // 2. CAMBIO DE API: Hacemos la consulta directa a tu tabla de Supabase
   const cargarProductos = async () => {
     setLoading(true);
     try {
-      const response = await fetch('https://api-martitatools.onrender.com/productos');
-      if (!response.ok) throw new Error('Error en servidor');
-      const data = await response.json();
+      const { data, error } = await supabase
+        .from('productos') // Nombre exacto de tu tabla en Supabase
+        .select('*');
+
+      if (error) throw error;
       setProductos(data || []);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error al cargar productos desde Supabase:", error.message);
     } finally {
       setLoading(false);
     }

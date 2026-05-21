@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
+// 1. Importamos la instancia de Supabase que configuramos antes
+import { supabase } from "../supabase"; 
 
-// 1. Añadimos 'clienteActual' a las props
+// Añadimos 'clienteActual' a las props
 function ClienteSelector({ onSeleccionar, clienteActual }) {
   const [clientes, setClientes] = useState([]);
   const [seleccionado, setSeleccionado] = useState(null);
@@ -18,14 +20,19 @@ function ClienteSelector({ onSeleccionar, clienteActual }) {
 
   useEffect(() => {
     let montado = true;
+    
     const fetchClientes = async () => {
       try {
-        const response = await fetch('https://api-martitatools.onrender.com/clientes');
-        if (!response.ok) throw new Error('Error en servidor');
-        const data = await response.json();
+        // 2. CAMBIO DE API: Hacemos la consulta directa a tu tabla de Supabase
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('*');
+
+        if (error) throw error;
+
         if (montado) setClientes(data || []);
       } catch (error) {
-        console.error("Error al cargar clientes:", error.message);
+        console.error("Error al cargar clientes desde Supabase:", error.message);
       }
     };
 

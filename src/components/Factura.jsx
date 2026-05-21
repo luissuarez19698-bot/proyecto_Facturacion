@@ -1,4 +1,6 @@
 import { useState } from "react";
+// 1. Importamos la instancia de Supabase
+import { supabase } from "../supabase"; 
 import ClienteSelector from "./ClienteSelector";
 import ProductoSelector from "./ProductoSelector";
 import TablaFactura from "./TablaFactura";
@@ -25,56 +27,80 @@ function Factura() {
   const agregarItem = (nuevo) => setItems([...items, nuevo]);
   const eliminarItem = (index) => setItems(items.filter((_, i) => i !== index));
 
+  // 2. NUEVO PROCESO PARA GUARDAR DIRECTO EN SUPABASE
   const procesoGuardar = async () => {
     if (!cliente || items.length === 0) return alert("Faltan datos");
 
+    // A. Validación del Cheque en Supabase
     if (metodoPago === "Cheque") {
       if (!numeroCheque) return alert("Por favor, ingrese el número de cheque.");
       
-      const checkResp = await fetch(`https://api-martitatools.onrender.com/facturas/verificar-cheque/${numeroCheque}`);
-      const { existe } = await checkResp.json();
-      if (existe) return alert("ERROR: Este número de cheque ya fue registrado anteriormente.");
+      const { data: chequeExistente, error: ErrorCheque } = await supabase
+        .from('facturas')
+        .select('numero_cheque')
+        .eq('numero_cheque', numeroCheque)
+        .maybeSingle(); // Trae un registro o null si no existe
+
+      if (ErrorCheque) return alert("Error al verificar cheque: " + ErrorCheque.message);
+      if (chequeExistente) return alert("ERROR: Este número de cheque ya fue registrado anteriormente.");
     }
 
     setGuardando(true);
     try {
-      const respFactura = await fetch('https://api-martitatools.onrender.com/facturas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id_cliente: cliente.id_cliente, 
-          ...totales,
+      // B. Insertar Encabezado de Factura
+      // Usamos .select().single() para que nos devuelva el registro creado con su ID autogenerado
+      const { data: nuevaFactura, error: errorFactura } = await supabase
+        .from('facturas')
+        .insert([{
+          id_cliente: cliente.id_cliente,
+          subtotal: totales.subtotal,
+          iva: totales.iva,
+          total: totales.total,
           metodo_pago: metodoPago,
           numero_cheque: metodoPago === "Cheque" ? numeroCheque : null,
           tasa_cambio: TASA_OFICIAL
-        })
-      });
+        }])
+        .select()
+        .single();
 
-      if (!respFactura.ok) throw new Error("Error al crear factura");
-      const factura = await respFactura.json();
+      if (errorFactura) throw errorFactura;
+      if (!nuevaFactura) throw new Error("No se pudo obtener el ID de la factura generada.");
 
+      // C. Preparar e Insertar Detalles de Factura en bloque (Bulk Insert)
       const detalles = items.map(item => ({
-        id_factura: factura.id_factura,
+        id_factura: nuevaFactura.id_factura, // ID recuperado de la inserción anterior
         id_producto: item.id_producto,
         cantidad: item.cantidad,
         precio_unitario: item.precio,
         subtotal_linea: item.precio * item.cantidad
       }));
 
-      const respDetalle = await fetch('https://api-martitatools.onrender.com/facturas/detalles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ detalles })
-      });
+      const { error: errorDetalle } = await supabase
+        .from('detalle_factura')
+        .insert(detalles);
 
-      if (!respDetalle.ok) throw new Error("Error al guardar detalles");
+      if (errorDetalle) throw errorDetalle;
 
-      alert("Venta guardada con éxito.");
+      // D. [OPCIONAL] Actualizar el Stock de los productos en Supabase
+      // Como estamos quitando la lógica del backend, el frontend puede actualizar el stock restante de cada uno
+      for (const item of items) {
+        const nuevoStock = item.stock - item.cantidad;
+        const { error: errorStock } = await supabase
+          .from('productos')
+          .update({ stock: nuevoStock })
+          .eq('id_producto', item.id_producto);
+        
+        if (errorStock) console.error(`Error al actualizar stock del producto ${item.id_producto}:`, errorStock.message);
+      }
+
+      alert("Venta guardada con éxito en Supabase.");
+      
+      // Reseteo de estados
       setItems([]);
       setCliente(null);
       setNumeroCheque("");
     } catch (e) {
-      alert("Error: " + e.message);
+      alert("Error en la operación: " + e.message);
     } finally {
       setGuardando(false);
     }
@@ -88,7 +114,7 @@ function Factura() {
         </div>
 
         <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <ClienteSelector onSeleccionar={setCliente} />
+          <ClienteSelector onSeleccionar={setCliente} clienteActual={cliente} />
           
           <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100 space-y-4">
             <h3 className="text-emerald-800 font-black text-sm uppercase tracking-widest text-center">Forma de Pago</h3>
@@ -96,6 +122,7 @@ function Factura() {
               {["Efectivo", "Tarjeta", "Cheque", "Dolares"].map((opcion) => (
                 <button
                   key={opcion}
+                  type="button"
                   onClick={() => setMetodoPago(opcion)}
                   className={`py-3 rounded-xl font-bold transition-all ${
                     metodoPago === opcion 
@@ -154,4 +181,5 @@ function Factura() {
     </div>
   );
 }
+
 export default Factura;

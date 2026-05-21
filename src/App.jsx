@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Swal from "sweetalert2";
+// 1. Importamos la instancia de Supabase configurada previamente
+import { supabase } from "./supabase"; 
 import ClienteSelector from "./components/ClienteSelector";
 import ProductoSelector from "./components/ProductoSelector";
 import TablaFactura from "./components/TablaFactura";
@@ -55,6 +57,7 @@ function App() {
     MiniToast.fire({ icon: 'info', title: 'Eliminado' });
   };
 
+  // 2. NUEVO PROCESO DE GUARDADO USANDO EL SDK DE SUPABASE
   const manejarGuardado = async () => {
     if (!cliente || itemsFactura.length === 0) return MiniToast.fire({ icon: 'warning', title: 'Faltan datos' });
     
@@ -74,18 +77,30 @@ function App() {
       return Swal.fire("Atención", "Ingrese número de Cheque", "warning");
     }
 
+    // A. Verificación de duplicados de Cheque directo en Supabase
     if (metodoPago === "Cheque") {
-      const checkResp = await fetch(`https://api-martitatools.onrender.com/facturas/verificar-cheque/${numeroReferencia}`);
-      const { existe } = await checkResp.json();
-      if (existe) return Swal.fire("Error", `El cheque "${numeroReferencia}" ya existe.`, "error");
+      try {
+        const { data: chequeExistente, error: errorCheque } = await supabase
+          .from('facturas')
+          .select('numero_cheque')
+          .eq('numero_cheque', numeroReferencia)
+          .maybeSingle();
+
+        if (errorCheque) throw errorCheque;
+        if (chequeExistente) {
+          return Swal.fire("Error", `El cheque "${numeroReferencia}" ya existe.`, "error");
+        }
+      } catch (err) {
+        return Swal.fire("Error de Conexión", "No se pudo verificar el cheque en Supabase.", "error");
+      }
     }
 
     setGuardando(true);
     try {
-      const respFactura = await fetch('https://api-martitatools.onrender.com/facturas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // B. Inserción del Encabezado de Factura
+      const { data: facturaGenerada, error: errorFactura } = await supabase
+        .from('facturas')
+        .insert([{
           id_cliente: cliente.id_cliente,
           subtotal: totales.subtotal,
           iva: totales.iva,
@@ -93,33 +108,47 @@ function App() {
           metodo_pago: metodoPago,
           numero_cheque: metodoPago === "Cheque" ? numeroReferencia : null,
           tasa_cambio: TASA_OFICIAL
-        })
-      });
+        }])
+        .select()
+        .single();
 
-      if (!respFactura.ok) throw new Error("Error al crear factura");
-      const factura = await respFactura.json();
+      if (errorFactura) throw errorFactura;
+      if (!facturaGenerada) throw new Error("No se pudo recuperar el ID de la factura creada.");
 
+      // C. Inserción masiva de los Detalles de la Factura
       const detalles = itemsFactura.map(item => ({
-        id_factura: factura.id_factura,
+        id_factura: facturaGenerada.id_factura,
         id_producto: item.id_producto,
         cantidad: item.cantidad,
         precio_unitario: item.precio,
         subtotal_linea: item.precio * item.cantidad
       }));
 
-      const respDetalle = await fetch('https://api-martitatools.onrender.com/facturas/detalles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ detalles })
-      });
+      const { error: errorDetalles } = await supabase
+        .from('detalle_factura')
+        .insert(detalles);
 
-      if (!respDetalle.ok) throw new Error("Error al guardar detalles");
+      if (errorDetalles) throw errorDetalles;
 
+      // D. Deducción síncrona del inventario de Productos
+      for (const item of itemsFactura) {
+        const nuevoStock = item.stock - item.cantidad;
+        const { error: errorStock } = await supabase
+          .from('productos')
+          .update({ stock: nuevoStock })
+          .eq('id_producto', item.id_producto);
+
+        if (errorStock) {
+          console.error(`Error al actualizar stock del ID ${item.id_producto}:`, errorStock.message);
+        }
+      }
+
+      // E. Almacenar estado local para visualización o impresión de ticket
       setUltimaFactura({
         cliente: { ...cliente },
         items: [...itemsFactura],
         totales: { ...totales },
-        numero: factura.id_factura,
+        numero: facturaGenerada.id_factura,
         pago: { 
           metodo: metodoPago, 
           ref: numeroReferencia,
@@ -130,6 +159,7 @@ function App() {
 
       MiniToast.fire({ icon: 'success', title: 'Venta Registrada' });
       
+      // Limpieza completa del formulario pos-venta exitosa
       setItemsFactura([]); 
       setCliente(null); 
       setMetodoPago("Efectivo"); 
@@ -137,7 +167,12 @@ function App() {
       setPagoRecibido("");
 
     } catch (error) {
-      Swal.fire({ title: "Error", text: "Error al guardar en el servidor.", icon: "error", confirmButtonColor: "#065f46" });
+      Swal.fire({ 
+        title: "Error", 
+        text: "Error al guardar en Supabase: " + error.message, 
+        icon: "error", 
+        confirmButtonColor: "#065f46" 
+      });
     } finally {
       setGuardando(false);
     }
@@ -165,8 +200,9 @@ function App() {
             
             <div className="lg:col-span-7 space-y-6">
               <ClienteSelector 
-              onSeleccionar={setCliente} 
-              clienteActual={cliente} />
+                onSeleccionar={setCliente} 
+                clienteActual={cliente} 
+              />
               <ProductoSelector onAgregar={agregarProducto} itemsActuales={itemsFactura} />
             </div>
 
@@ -178,6 +214,7 @@ function App() {
                   {["Efectivo", "Tarjeta", "Cheque"].map((m) => (
                     <button
                       key={m}
+                      type="button"
                       onClick={() => {
                         setMetodoPago(m);
                         setPagoRecibido("");
@@ -262,6 +299,7 @@ function App() {
                 </div>
                 
                 <button 
+                  type="button"
                   disabled={metodoPago === "Cheque"}
                   onClick={() => {
                     setMonedaVista(monedaVista === "NIO" ? "USD" : "NIO");
